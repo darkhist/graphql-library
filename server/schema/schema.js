@@ -14,7 +14,8 @@ const {
   GraphQLInt,
   GraphQLList,
   GraphQLSchema,
-  GraphQLID
+  GraphQLID,
+  GraphQLNonNull
 } = graphql;
 
 const Book = require('../models/book');
@@ -128,8 +129,10 @@ const AuthorType = new GraphQLObjectType({
      addAuthor: {
        type: AuthorType,
        args: {
-         name: {type: GraphQLString},
-         age: {type: GraphQLInt}
+         // require a name and age to be provided
+         // when adding a new author
+         name: {type: new GraphQLNonNull(GraphQLString)},
+         age: {type: new GraphQLNonNull(GraphQLInt)}
        },
        // do the work to create an author...
        resolve(parent, args) {
@@ -146,9 +149,11 @@ const AuthorType = new GraphQLObjectType({
      addBook: {
       type: BookType,
       args: {
-        title: {type: GraphQLString},
-        genre: {type: GraphQLString},
-        authorID: {type: GraphQLID}
+        // require title, genre, and authorID 
+        // when creating new books
+        title: {type: new GraphQLNonNull(GraphQLString)},
+        genre: {type: new GraphQLNonNull(GraphQLString)},
+        authorID: {type: new GraphQLNonNull(GraphQLID)}
       },
       resolve(parent, args) {
         const {title, genre, authorID} = args;
