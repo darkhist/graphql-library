@@ -1,12 +1,13 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
+const { ObjectId } = mongoose.Schema.Types;
 
 const BookSchema = new Schema({
   // remember, mongoDB creates unique ID's for items
   // in collections – so we don't need to declare one
   title: String,
   genre: String,
-  authorID: Number
+  authorID: {type: ObjectId}
 });
 
 // A model represents a collection
