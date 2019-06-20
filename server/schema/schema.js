@@ -7,6 +7,7 @@
  * and how we can interact with them
  */
 const graphql = require('graphql');
+
 const {
   GraphQLObjectType, 
   GraphQLString, 
@@ -16,24 +17,8 @@ const {
   GraphQLID
 } = graphql;
 
-// Fake Data Store
-const books = [
-  {id: 1, authorID: 1, title: 'Born A Crime', genre: 'Biography'},
-  {id: 2, authorID: 2, title: 'Harry Potter', genre: 'Fantasy'},
-  {id: 3, authorID: 3, title: 'The Soul of a New Machine', genre: 'Tech'},
-  {id: 4, authorID: 4, title: 'Hatching Twitter', genre: 'Tech'},
-  {id: 5, authorID: 5, title: 'Crushing It', genre: 'Self Improvement'},
-  {id: 6, authorID: 2, title: 'Lethal White', genre: 'Mystery'},
-  {id: 7, authorID: 5, title: '#AskGaryVee', genre: 'Self Improvement'},
-];
-
-const authors = [
-  {id: 1, name: 'Trevor Noah', age: 35},
-  {id: 2, name: 'J.K. Rowling', age: 53},
-  {id: 3, name: 'Tracy Kidder', age: 73},
-  {id: 4, name: 'Nick Bilton', age: 40},
-  {id: 5, name: 'Gary Vaynerchuck', age: 43}
-]
+const Book = require('../models/book');
+const Author = require('../models/author');
 
 // Define a Book type
 const BookType = new GraphQLObjectType({
@@ -47,14 +32,7 @@ const BookType = new GraphQLObjectType({
     author: {
       type: AuthorType,
       resolve(parent, args) {
-        // parent holds the book we've asked for
-
-        // look through the authors
-        // check to see if the author id matches the book's
-        // authorID -- meaning an author has written that book
-        for (let author of authors) {
-          if (author.id === parent.authorID) return author
-        }
+        // TODO
       }
     }
   })
@@ -72,12 +50,7 @@ const AuthorType = new GraphQLObjectType({
     books: {
       type: new GraphQLList(BookType),
       resolve(parent, args) {
-        // parent holds the author
-        
-        // We want to return every book
-        // where the book's authorID matches 
-        // an author id
-        return books.filter(book => book.authorID === parent.id);
+        // TODO
       }
     }
   })
@@ -89,10 +62,10 @@ const AuthorType = new GraphQLObjectType({
  */
 
 /** Example Root Query for a Book
- * book(id: '123') {
- * title
- * genre
- * }
+ * book(id: 1) {
+    title
+    genre
+  }
  */
 
  const RootQuery = new GraphQLObjectType({
@@ -107,9 +80,7 @@ const AuthorType = new GraphQLObjectType({
        // The code that is used to retrieve what we're
        // looking for (from a DB / Other Source)
        resolve(parent, args) {
-        for (let book of books) {
-          if (book.id.toString() === args.id) return book
-        }
+        // TODO
        }
      },
      // Return an author
@@ -126,20 +97,53 @@ const AuthorType = new GraphQLObjectType({
      books: {
         type: new GraphQLList(BookType),
         resolve() {
-          return books;
+          // TODO
         }
      },
      // Return all authors
      authors: {
        type: new GraphQLList(AuthorType),
        resolve() {
-         return authors;
+         // TODO
+       }
+     }
+   }
+ });
+
+ /**
+  * Mutations allow us to add, edit, and delete data
+  * We define mutations to tell GraphQL how our data
+  * can change
+  */
+ const Mutation = new GraphQLObjectType({
+   name: 'Mutation',
+   // types of mutations
+   fields: {
+     // creating a new author
+     addAuthor: {
+       type: AuthorType,
+       args: {
+         name: {type: GraphQLString},
+         age: {type: GraphQLInt}
+       },
+       // do the work to create an author...
+       resolve(parent, args) {
+         const {name, age} = args;
+          // use our mongoose author model
+          let author = new Author({
+            name: name,
+            age: age
+          });
+          // save the author in the db
+          return author.save();
        }
      }
    }
  })
 
- // Export a new schema with our initial root query
+ // Export a new schema with info about 
+ // what queries and mutations can be performed
  module.exports = new GraphQLSchema({
-  query: RootQuery
+  query: RootQuery,
+  mutation: Mutation
  });
