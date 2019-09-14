@@ -21,7 +21,7 @@ const {
 const Book = require('../models/book');
 const Author = require('../models/author');
 
-// Define a Book type
+// Book type
 const BookType = new GraphQLObjectType({
   name: 'Book',
   // Fields is a function that returns an object
@@ -33,14 +33,13 @@ const BookType = new GraphQLObjectType({
     author: {
       type: AuthorType,
       resolve(parent, args) {
-        // parent contains our book
         return Author.findById(parent.authorID);
       }
     }
   })
 });
 
-// Define an Author type
+// Author type
 const AuthorType = new GraphQLObjectType({
   name: 'Author',
   // Fields is a function that returns an object
@@ -59,62 +58,73 @@ const AuthorType = new GraphQLObjectType({
 });
 
 /**
- * Root Queries
- * Describe how we initially access the graph 
+ * Root Queries are a top-level type which represents
+ * all the possible ways we might want to initally
+ * interact with our GraphQL API
+ * 
+ * In this project we might want to:
+ *  - list all books
+ *  - list all authors
+ *  - list a particular book
+ *  - list a particular author 
  */
 
-/** Example Root Query for a Book
- * book(id: 1) {
-    title
-    genre
-  }
+/** Example Root Query
+ * 
+ * shows all books & their titles
+ *
+ * books {
+ *  title
+ * }
+ * 
+ * RootQuery is placed after Types because they 
+ * need to be defined before we can use them
  */
-
- const RootQuery = new GraphQLObjectType({
-   name: 'RootQueryType',
-   fields: {
-     // Return a single book
-     book: {
-       // The type of thing we're looking for
-       type: BookType,
-       // The args that should be passed in the query
-       args: {id: {type: GraphQLID}},
-       // The code that is used to retrieve what we're
-       // looking for (from a DB / Other Source)
-       resolve(parent, args) {
-         return Book.findById(args.id);
-       }
-     },
-     // Return an author
-     author: {
-       type: AuthorType,
-       args: {name: {type: GraphQLString}},
-       resolve(parent, args) {
-         // findOne takes two args
-         // the first is a query
-         // the second is a callback that will be
-         // executed after the query is finished
-        return Author.findOne({name: args.name}, (err, doc) => {
-           if (err || !doc) console.log('No Author Found');
-         });
-       }
-     },
-     // Return all books
-     books: {
-        type: new GraphQLList(BookType),
-        resolve() {
-          return Book.find({});
-        }
-     },
-     // Return all authors
-     authors: {
-       type: new GraphQLList(AuthorType),
+const RootQuery = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+    // query for a particular book
+    book: {
+      // The type of thing we're looking for
+      type: BookType,
+      // The args that should be passed in the query
+      args: {id: {type: GraphQLID}},
+      // The code that is used to retrieve what we're
+      // looking for (from a DB / Other Source)
+      resolve(parent, args) {
+        return Book.findById(args.id);
+      }
+    },
+    // Return an author
+    author: {
+      type: AuthorType,
+      args: {name: {type: GraphQLString}},
+      resolve(parent, args) {
+        // findOne takes two args
+        // the first is a query
+        // the second is a callback that will be
+        // executed after the query is finished
+       return Author.findOne({name: args.name}, (err, doc) => {
+          if (err || !doc) console.log('No Author Found');
+        });
+      }
+    },
+    // Return all books
+    books: {
+       type: new GraphQLList(BookType),
        resolve() {
-         return Author.find({})
+         return Book.find({});
        }
-     }
-   }
- });
+    },
+    // Return all authors
+    authors: {
+      type: new GraphQLList(AuthorType),
+      resolve() {
+        return Author.find({})
+      }
+    }
+  }
+});
 
  /**
   * Mutations allow us to add, edit, and delete data
