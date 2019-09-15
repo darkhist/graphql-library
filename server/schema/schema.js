@@ -1,186 +1,185 @@
 /**
- * This file defines a schema for our graph / API
- * which describes the data our API will hold
- * 
- * It describes the types of objects in our API, 
+ * This file defines a schema for the graph / API
+ * which describes the data the API will hold
+ *
+ * It describes the types of objects in the API,
  * the relationships between them,
  * and how we can interact with them
  */
-const graphql = require('graphql');
-
-const {
-  GraphQLObjectType, 
-  GraphQLString, 
-  GraphQLInt,
-  GraphQLList,
-  GraphQLSchema,
-  GraphQLID,
-  GraphQLNonNull
-} = graphql;
+const { makeExecutableSchema } = require('graphql-tools');
 
 const Book = require('../models/book');
 const Author = require('../models/author');
 
-// Book type
-const BookType = new GraphQLObjectType({
-  name: 'Book',
-  // Fields is a function that returns an object
-  // which contains all the properties that a Book has
-  fields: () => ({
-    id: {type: GraphQLID},
-    title: {type: GraphQLString},
-    genre: {type: GraphQLString},
-    author: {
-      type: AuthorType,
-      resolve(parent, args) {
-        return Author.findById(parent.authorID);
-      }
-    }
-  })
-});
+const typeDefs = `
+  type Book {
+    id: ID
+    title: String
+    genre: String
+    author: Author
+  }
 
-// Author type
-const AuthorType = new GraphQLObjectType({
-  name: 'Author',
-  // Fields is a function that returns an object
-  // which contains all the properties that a Book has
-  fields: () => ({
-    id: {type: GraphQLID},
-    name: {type: GraphQLString},
-    age: {type: GraphQLInt},
-    books: {
-      type: new GraphQLList(BookType),
-      resolve(parent, args) {
-        return Book.find({ authorID: parent.id });
-      }
-    }
-  })
-});
+  type Author {
+    id: ID
+    name: String
+    age: Int
+    books: [Book]
+  }
+
+  type Query {
+    book(title: String!): Book
+    books: [Book]
+    author(name: String!): Author
+    authors: [Author]
+  }
+
+  type Mutation {
+    addAuthor (
+      name: String!
+      age: Int!
+    ): Author!
+
+    addBook (
+      title: String!
+      genre: String
+      authorID: String!
+    ): Book!
+  }
+`;
 
 /**
- * Root Queries are a top-level type which represents
- * all the possible ways we might want to initally
- * interact with our GraphQL API
- * 
- * In this project we might want to:
- *  - list all books
- *  - list all authors
- *  - list a particular book
- *  - list a particular author 
- */
-
-/** Example Root Query
- * 
- * shows all books & their titles
+ * All resolvers have the following signature
+ * @param obj – the previous object
+ * (often unused for root queries bc they're at the top level)
+ * @param args – args provided to the field in the query
+ * @param context – value which is provided to every resolver
+ * and holds important contextual information like
+ * the currently logged in user, or access to a database
+ * @param info – field-specific info relevant to a query
+ * and schema details
+ * resolver(obj, args, context, info)
  *
- * books {
- *  title
- * }
- * 
- * RootQuery is placed after Types because they 
- * need to be defined before we can use them
+ * _ is often used to denote unused function args
  */
-const RootQuery = new GraphQLObjectType({
-  name: 'RootQueryType',
-  fields: {
-    // query for a particular book
-    book: {
-      // The type of thing we're looking for
-      type: BookType,
-      // The args that should be passed in the query
-      args: {id: {type: GraphQLID}},
-      // The code that is used to retrieve what we're
-      // looking for (from a DB / Other Source)
-      resolve(parent, args) {
-        return Book.findById(args.id);
-      }
+const resolvers = {
+  /**
+   * Root Queries
+   *
+   * example queries:
+   * {
+   *  books {
+   *    title
+   *    genre
+   *  }
+   * }
+   *
+   * {
+   *  author(name: "Stephen King") {
+   *    name
+   *    age
+   *  }
+   * }
+   **/
+  Query: {
+    /** return a particular book
+     *
+     * In both resolvers, the obj arg is not needed,
+     * bc they're top-level (root) queries
+     *
+     * We know that we're providing a title for our
+     * book, so we'll grab the title prop
+     *
+     * Then, we ask MongoDB for a Book which
+     * has the title we provided
+     *
+     * Note: mongoose queries return Promises, which is why
+     * using async/await is important
+     **/
+    book: async (_, { title }) => await Book.findOne({ title: title }),
+    // return all books
+    books: () => Book.find({}),
+    // return a particular author
+    author: async (_, { name }) => await Author.findOne({ name: name }),
+    // return all authors
+    authors: () => Author.find({})
+  },
+
+  /**
+   * Data to return for Book queries
+   *
+   * We need to handle the case where we want to know
+   * a book's author i.e a book which has an authorID
+   * that matches an Author's ID
+   *
+   * All other fields will be returned automatically
+   *
+   * example query:
+   * {
+   *  book(title: "Harry Potter") {
+   *    author {
+   *      name
+   *      age
+   *    }
+   *  }
+   * }
+   *
+   * In our resolver, obj refers to the Book type
+   * bc it's above author
+   **/
+  Book: {
+    author: async (obj, _) => {
+      // find the Book's author ID
+      const { authorID } = obj;
+      // return the author with the matching ID
+      return await Author.findById(authorID);
+    }
+  },
+  // Data to return for Author queries
+  // Similar to Book
+  Author: {
+    books: async (obj, _) => {
+      // find the Book's id
+      const { _id } = obj;
+      // return the list of Book's with matching author ID's
+      return await Book.find({ authorID: _id });
+    }
+  },
+  /** Mutations
+   * Allow us to create and edit data in the API
+   *
+   * example mutation:
+   * mutation {
+   *  addAuthor(name: "Stephen King", age: 71) {
+   *    id
+   *    name
+   *    age
+   *  }
+   * }
+   **/
+  Mutation: {
+    addAuthor: async (_, { name, age }) => {
+      // create a new Author record
+      let author = new Author({
+        name: name,
+        age: age
+      });
+      return await author.save();
     },
-    // Return an author
-    author: {
-      type: AuthorType,
-      args: {name: {type: GraphQLString}},
-      resolve(parent, args) {
-        // findOne takes two args
-        // the first is a query
-        // the second is a callback that will be
-        // executed after the query is finished
-       return Author.findOne({name: args.name}, (err, doc) => {
-          if (err || !doc) console.log('No Author Found');
-        });
-      }
-    },
-    // Return all books
-    books: {
-       type: new GraphQLList(BookType),
-       resolve() {
-         return Book.find({});
-       }
-    },
-    // Return all authors
-    authors: {
-      type: new GraphQLList(AuthorType),
-      resolve() {
-        return Author.find({})
-      }
+    addBook: async (_, { title, genre, authorID }) => {
+      // create a new Book record
+      let book = new Book({
+        title: title,
+        genre: genre,
+        authorID: authorID
+      });
+      return await book.save();
     }
   }
+};
+
+const schema = makeExecutableSchema({
+  typeDefs,
+  resolvers
 });
 
- /**
-  * Mutations allow us to add, edit, and delete data
-  * We define mutations to tell GraphQL how our data
-  * can change
-  */
- const Mutation = new GraphQLObjectType({
-   name: 'Mutation',
-   // types of mutations
-   fields: {
-     // creating a new author
-     addAuthor: {
-       type: AuthorType,
-       args: {
-         // require a name and age to be provided
-         // when adding a new author
-         name: {type: new GraphQLNonNull(GraphQLString)},
-         age: {type: new GraphQLNonNull(GraphQLInt)}
-       },
-       // do the work to create an author...
-       resolve(parent, args) {
-         const {name, age} = args;
-          // use our mongoose author model
-          let author = new Author({
-            name: name,
-            age: age
-          });
-          // save the author in the db
-          return author.save();
-       }
-     }, 
-     addBook: {
-      type: BookType,
-      args: {
-        // require title, genre, and authorID 
-        // when creating new books
-        title: {type: new GraphQLNonNull(GraphQLString)},
-        genre: {type: new GraphQLNonNull(GraphQLString)},
-        authorID: {type: new GraphQLNonNull(GraphQLID)}
-      },
-      resolve(parent, args) {
-        const {title, genre, authorID} = args;
-         let book = new Book({
-           title: title,
-           genre: genre,
-           authorID: authorID
-         });
-         return book.save();
-      }
-     }
-   }
- })
-
- // Export a new schema with info about 
- // what queries and mutations can be performed
- module.exports = new GraphQLSchema({
-  query: RootQuery,
-  mutation: Mutation
- });
+module.exports = { schema, resolvers };
