@@ -12,7 +12,7 @@ Consider supporting the creator of this course, [@TheNetNinja](https://twitter.c
 - [Making a PayPal Donation](https://www.paypal.me/thenetninja)
 - [Becoming a Supporter on Patreon](https://www.patreon.com/thenetninja)
 
-This is mostly just a personal exploratory project, but if you'd like to use it as a guide, boilerplate, etc – then continue reading
+This is mostly just a personal exploratory project, but if you'd like to use it as a guide, boilerplate, etc, then continue reading :~)
 
 ## Getting Started
 
@@ -25,41 +25,20 @@ This is mostly just a personal exploratory project, but if you'd like to use it 
 
 ## Client Development
 
-```
-cd client
-```
+The frontend for this project was scaffolded with [Create React App](https://github.com/facebook/create-react-app)
 
-```
-yarn
-```
-
-```
-yarn start
-```
+See [here](client/README.md) for details!
 
 _I'm using Prettier for code formatting, so if you hate that just remove the Prettier development dependency_
 
 ## Server Development
 
-```
-mongod
-```
-
-```
-cd server
-```
-
-```
-yarn
-```
-
-```
-yarn start
-```
-
-```
-visit http://localhost:9000/api
-```
+1. In a fresh Terminal tab, run `mongod` to start MongoDB
+2. Switch to a new tab
+3. `cd server`
+4. Install dependencies by running `yarn`
+5. Start the server with `yarn start`
+6. Visit http://localhost:9000/api
 
 _GraphiQL is an interactive GraphQL IDE, and it's great for testing queries and exploring your API documentation_
 
